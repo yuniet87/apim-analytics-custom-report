@@ -36,7 +36,7 @@ import org.wso2.analytics.apim.rest.api.report.impl.ReportApiServiceImpl;
 import org.wso2.analytics.apim.rest.api.report.reportgen.DefaultReportGeneratorImpl;
 import org.wso2.analytics.apim.rest.api.report.reportgen.model.RowEntry;
 import org.wso2.analytics.apim.rest.api.report.reportgen.model.TableData;
-import org.wso2.analytics.apim.rest.api.report.reportgen.util.ReportGeneratorUtil;
+// import org.wso2.analytics.apim.rest.api.report.reportgen.util.ReportGeneratorUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -65,7 +65,7 @@ public class CustomPDFGenerator implements ReportGenerator {
     // Font configuration
     private static final PDFont TEXT_FONT = PDType1Font.HELVETICA;
     private static final float FONT_SIZE = 9;
-    private static final float RECORD_COUNT_PER_PAGE = 25;
+    private static final float RECORD_COUNT_PER_PAGE = 15;
 
     private static final Log log = LogFactory.getLog(DefaultReportGeneratorImpl.class);
     private static final String REQUEST_SUMMARY_MONTHLY_APP_NAME = "/APIMTopAppUsersReport.siddhi";
@@ -75,35 +75,36 @@ public class CustomPDFGenerator implements ReportGenerator {
     private Map<Integer, PDPage> pageMap = new HashMap<>();
     private String period;
     private int numOfPages;
-    private final String[] months = {"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
-            "Septiembre", "Octubre", "Noviembre", "Diciembre"};
+    private final String[] months = { "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
+            "Septiembre", "Octubre", "Noviembre", "Diciembre" };
     private SiddhiAppRuntime siddhiAppRuntime = null;
     private long totalRequestCount;
 
     /**
      * The default implementation of Monthly request report.
-     * @param year year of the report.
-     * @param month month of the report.
+     * 
+     * @param year         year of the report.
+     * @param month        month of the report.
      * @param tenantDomain
      */
     public CustomPDFGenerator(String year, String month, String tenantDomain) throws IOException {
 
         this.table = getRecordsFromAggregations(year, month, tenantDomain);
         if (table.getRows().size() > 0) {
-            String[] columnHeaders = {"#", "Nombre de la API", "Versión", "Nombre de la Aplicación"
-                , "Usuario", "Cantidad de peticiones"};
+            String[] columnHeaders = { "#", "Nombre de la API", "Versión", "Nombre de la Aplicación", "Usuario",
+                    "Cantidad de peticiones" };
             table.setColumnHeaders(columnHeaders);
             String monthName = months[Integer.parseInt(month) - 1];
             this.period = monthName + " " + year;
-            this.numOfPages = ReportGeneratorUtil.getNumberOfPages(table.getRows().size());
+            this.numOfPages = getNumberOfPages(table.getRows().size());
             this.document = initializePages();
-            this.recordsPerPageList = ReportGeneratorUtil.getRecordsPerPage(table.getRows().size());
+            this.recordsPerPageList = getRecordsPerPage(table.getRows().size());
         }
     }
 
     private void initializeSiddhiAPPRuntime() throws IOException {
-        InputStream inputStream = DefaultReportGeneratorImpl.class.
-                getResourceAsStream(REQUEST_SUMMARY_MONTHLY_APP_NAME);
+        InputStream inputStream = DefaultReportGeneratorImpl.class
+                .getResourceAsStream(REQUEST_SUMMARY_MONTHLY_APP_NAME);
         String siddhiApp = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
         SiddhiManager siddhiManager = new SiddhiManager();
         siddhiAppRuntime = siddhiManager.createSiddhiAppRuntime(siddhiApp);
@@ -140,15 +141,13 @@ public class CustomPDFGenerator implements ReportGenerator {
             insertReportGeneratedTimeToHeader(contentStream);
             contentStream.close();
 
-            float[] columnWidths = {40, 160, 70, 160, 160, 160};
-            drawTableGrid(document, pageMap, recordsPerPageList, columnWidths,
-                    table.getRows().size());
-            writeRowsContent(table.getColumnHeaders(), columnWidths, document, pageMap,
-                    table.getRows());
+            float[] columnWidths = { 40, 160, 70, 160, 160, 160 };
+            drawTableGrid(document, pageMap, recordsPerPageList, columnWidths, table.getRows().size());
+            writeRowsContent(table.getColumnHeaders(), columnWidths, document, pageMap, table.getRows());
 
             // write total request count to the header.
-            PDPageContentStream contentStreamForInitialPage = new PDPageContentStream(document, pageMap.get(1),
-                    true, false);
+            PDPageContentStream contentStreamForInitialPage = new PDPageContentStream(document, pageMap.get(1), true,
+                    false);
             insertTotalRequestCountToHeader(contentStreamForInitialPage, totalRequestCount);
             contentStreamForInitialPage.close();
 
@@ -167,12 +166,10 @@ public class CustomPDFGenerator implements ReportGenerator {
 
         TableData table = new TableData();
         String date = year + "-" + month;
-        String requestCountQuery = "from ApiUserPerAppAgg on apiCreatorTenantDomain==" + "\'" +
-                apiCreatorTenantDomain +
-                "\'" + " within '" + date + "-** **:**:**' per \"months\" select apiName, apiVersion, " +
-                "applicationName, applicationOwner, sum(totalRequestCount) as " +
-                "RequestCount group by " +
-                "apiName, apiVersion, applicationName, applicationOwner order by RequestCount desc";
+        String requestCountQuery = "from ApiUserPerAppAgg on apiCreatorTenantDomain==" + "\'" + apiCreatorTenantDomain
+                + "\'" + " within '" + date + "-** **:**:**' per \"months\" select apiName, apiVersion, "
+                + "applicationName, applicationOwner, sum(totalRequestCount) as " + "RequestCount group by "
+                + "apiName, apiVersion, applicationName, applicationOwner order by RequestCount desc";
 
         initializeSiddhiAPPRuntime();
         Event[] events = siddhiAppRuntime.query(requestCountQuery);
@@ -200,6 +197,7 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Inserts logo onto the top right of the page.
+     * 
      * @param document
      * @param contentStream
      * @throws IOException
@@ -213,12 +211,13 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Inserts page number onto the bottom center of the page.
+     * 
      * @param contentStream content stream of the page.
-     * @param pageNumber page number.
+     * @param pageNumber    page number.
      * @throws IOException
      */
-    public static void insertPageNumber(PDPageContentStream contentStream, 
-        PDPage page,  int pageNumber) throws IOException {
+    public static void insertPageNumber(PDPageContentStream contentStream, PDPage page, int pageNumber)
+            throws IOException {
 
         contentStream.setFont(PDType1Font.HELVETICA_BOLD, FONT_SIZE);
         contentStream.beginText();
@@ -231,9 +230,9 @@ public class CustomPDFGenerator implements ReportGenerator {
     /**
      *
      * @param contentStream content stream of the page.
-     * @param positionX x-axis position.
-     * @param positionY y-axis position.
-     * @param text the content to write.
+     * @param positionX     x-axis position.
+     * @param positionY     y-axis position.
+     * @param text          the content to write.
      * @throws IOException
      */
     public static void writeContent(PDPageContentStream contentStream, float positionX, float positionY, String text)
@@ -247,6 +246,7 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Inserts title to the page.
+     * 
      * @param contentStream
      * @param title
      * @throws IOException
@@ -259,8 +259,10 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Inserts report period to the page.
+     * 
      * @param contentStream content stream of the page.
-     * @param period the time duration which should be printed below the title.
+     * @param period        the time duration which should be printed below the
+     *                      title.
      * @throws IOException
      */
     public static void insertReportTimePeriodToHeader(PDPageContentStream contentStream, String period)
@@ -272,37 +274,38 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Inserts report generated time.
+     * 
      * @param contentStream content stream of the page.
      * @throws IOException
      */
     public static void insertReportGeneratedTimeToHeader(PDPageContentStream contentStream) throws IOException {
 
         SimpleDateFormat formato = new SimpleDateFormat("EEEE, d 'de' MMMM 'de' yyyy 'a las' hh:mm:ss a",
-            Locale.forLanguageTag("es-ES"));
+                Locale.forLanguageTag("es-ES"));
 
         contentStream.setFont(PDType1Font.HELVETICA_BOLD, FONT_SIZE);
         writeContent(contentStream, CELL_MARGIN, 510, "Reporte generado el : " + formato.format(new Date()));
     }
 
     /**
-     *  Draws a table.
-     * @param document document to draw the table.
-     * @param pageMap map of page objects against page numbers.
-     * @param recordsPerPageList a list of integers with number of records for each page.
-     * @param columnWidths widths of the columns.
-     * @param numberOfRows total number of rows.
+     * Draws a table.
+     * 
+     * @param document           document to draw the table.
+     * @param pageMap            map of page objects against page numbers.
+     * @param recordsPerPageList a list of integers with number of records for each
+     *                           page.
+     * @param columnWidths       widths of the columns.
+     * @param numberOfRows       total number of rows.
      * @throws IOException
      */
-    public static void drawTableGrid(PDDocument document, Map<Integer,
-            PDPage> pageMap, List<Integer> recordsPerPageList, float[] columnWidths, int numberOfRows)
-            throws IOException {
+    public static void drawTableGrid(PDDocument document, Map<Integer, PDPage> pageMap,
+            List<Integer> recordsPerPageList, float[] columnWidths, int numberOfRows) throws IOException {
 
         float nextY = TABLE_TOP_Y;
 
         // draw horizontal lines
         int currentPageNum = 1;
-        PDPageContentStream contentStream = new PDPageContentStream(document, pageMap.get(currentPageNum), true,
-                false);
+        PDPageContentStream contentStream = new PDPageContentStream(document, pageMap.get(currentPageNum), true, false);
         int rowNum = 0;
         for (int i = 0; i <= numberOfRows + 1; i++) {
             contentStream.drawLine(CELL_MARGIN, nextY, CELL_MARGIN + TABLE_WIDTH, nextY);
@@ -311,8 +314,9 @@ public class CustomPDFGenerator implements ReportGenerator {
                 contentStream.close();
                 currentPageNum++;
                 contentStream = new PDPageContentStream(document, pageMap.get(currentPageNum), true, false);
+                contentStream.concatenate2CTM(0, 1, -1, 0, pageMap.get(currentPageNum).getMediaBox().getWidth(), 0);
                 insertPageNumber(contentStream, pageMap.get(currentPageNum), currentPageNum);
-                insertLogo(document, contentStream);
+                // insertLogo(document, contentStream);
                 nextY = TABLE_TOP_Y;
                 rowNum = 0;
                 numberOfRows++; // at each new page add one more horizontal line
@@ -343,15 +347,17 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Prints a table with column headers and data.
+     * 
      * @param columnHeaders the table column headers.
-     * @param columnWidths widths of each column.
-     * @param document the document.
-     * @param pageMap page map with each page object stored against each page index.
-     * @param rowEntries list of rows.
+     * @param columnWidths  widths of each column.
+     * @param document      the document.
+     * @param pageMap       page map with each page object stored against each page
+     *                      index.
+     * @param rowEntries    list of rows.
      * @throws IOException
      */
-    public static void writeRowsContent(String[] columnHeaders, float[] columnWidths, PDDocument document, Map<Integer,
-            PDPage> pageMap, List<RowEntry> rowEntries) throws IOException {
+    public static void writeRowsContent(String[] columnHeaders, float[] columnWidths, PDDocument document,
+            Map<Integer, PDPage> pageMap, List<RowEntry> rowEntries) throws IOException {
 
         float startX = CELL_MARGIN + CELL_PADDING; // space between entry and the column line
         float startY = TABLE_TOP_Y - (ROW_HEIGHT / 2)
@@ -376,6 +382,7 @@ public class CustomPDFGenerator implements ReportGenerator {
                 contentStreamForData.close();
                 currentPageNum += 1;
                 contentStreamForData = new PDPageContentStream(document, pageMap.get(currentPageNum), true, false);
+                contentStream.concatenate2CTM(0, 1, -1, 0, pageMap.get(currentPageNum).getMediaBox().getWidth(), 0);
                 contentStreamForData.setFont(TEXT_FONT, FONT_SIZE);
                 startY = TABLE_TOP_Y - (ROW_HEIGHT / 2)
                         - ((TEXT_FONT.getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * FONT_SIZE) / 4);
@@ -391,16 +398,16 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Writes the column header.
+     * 
      * @param contentStream content stream of the page.
-     * @param columnWidths widths of each column.
-     * @param positionX x-axis position
-     * @param positionY y-axis position
-     * @param content data to write in column header.
+     * @param columnWidths  widths of each column.
+     * @param positionX     x-axis position
+     * @param positionY     y-axis position
+     * @param content       data to write in column header.
      * @throws IOException
      */
     public static void writeColumnHeader(PDPageContentStream contentStream, float[] columnWidths, float positionX,
-                                         float positionY, String[] content)
-            throws IOException {
+            float positionY, String[] content) throws IOException {
 
         contentStream.setFont(PDType1Font.HELVETICA_BOLD, FONT_SIZE);
         for (int i = 0; i < columnWidths.length; i++) {
@@ -412,17 +419,17 @@ public class CustomPDFGenerator implements ReportGenerator {
     }
 
     /**
-     *  Writes a row.
+     * Writes a row.
+     * 
      * @param contentStream content stream of the page.
-     * @param columnWidths widths of each column.
-     * @param positionX x-axis position
-     * @param positionY y-axis position
-     * @param entry row data.
+     * @param columnWidths  widths of each column.
+     * @param positionX     x-axis position
+     * @param positionY     y-axis position
+     * @param entry         row data.
      * @throws IOException
      */
     public static void writeToRow(PDPageContentStream contentStream, float[] columnWidths, float positionX,
-                                  float positionY, RowEntry entry)
-            throws IOException {
+            float positionY, RowEntry entry) throws IOException {
 
         for (int i = 0; i < columnWidths.length; i++) {
             writeContent(contentStream, positionX, positionY, entry.getEntries().get(i));
@@ -432,7 +439,8 @@ public class CustomPDFGenerator implements ReportGenerator {
 
     /**
      * Inserts total request count of the report on the header.
-     * @param contentStream content stream of the page.
+     * 
+     * @param contentStream     content stream of the page.
      * @param totalRequestCount total aggregated count.
      * @throws IOException
      */
@@ -440,7 +448,48 @@ public class CustomPDFGenerator implements ReportGenerator {
             throws IOException {
 
         contentStream.setFont(PDType1Font.HELVETICA_BOLD, FONT_SIZE);
-        writeContent(contentStream, CELL_MARGIN, 490, "Total de peticiones realizadas : " +
-                totalRequestCount.toString());
+        writeContent(contentStream, CELL_MARGIN, 490,
+                "Total de peticiones realizadas : " + totalRequestCount.toString());
+    }
+
+    /**
+     * Returns the number of pages in the document.
+     * 
+     * @param numberOfRows number of records.
+     * @return number of pages in the document.
+     */
+    public static int getNumberOfPages(int numberOfRows) {
+
+        return (int) Math.ceil(numberOfRows / RECORD_COUNT_PER_PAGE);
+    }
+
+    /**
+     * Get List of integers with the number of records in each page.
+     * 
+     * @param numberOfRows total number of rows across the document.
+     * @return list of integers with the number of records. Each index represents
+     *         the page number - 1.
+     */
+    public static List<Integer> getRecordsPerPage(int numberOfRows) {
+
+        int numOfPages = (int) Math.ceil(numberOfRows / RECORD_COUNT_PER_PAGE);
+        List<Integer> recordCountPerPage = new ArrayList<>();
+
+        int remainingRows = numberOfRows;
+
+        if (numberOfRows < RECORD_COUNT_PER_PAGE) {
+            recordCountPerPage.add(numberOfRows);
+            return recordCountPerPage;
+        } else {
+            for (int i = 0; i < numOfPages; i++) {
+                if (remainingRows >= RECORD_COUNT_PER_PAGE) {
+                    recordCountPerPage.add((int) RECORD_COUNT_PER_PAGE);
+                    remainingRows -= RECORD_COUNT_PER_PAGE;
+                } else {
+                    recordCountPerPage.add(remainingRows);
+                }
+            }
+        }
+        return recordCountPerPage;
     }
 }
